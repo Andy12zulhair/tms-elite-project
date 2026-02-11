@@ -1,0 +1,10 @@
+[
+  "id",
+  "name",
+  "phone",
+  "status",
+  "rating",
+  "sim_type",
+  "total_trips",
+  "created_at"
+]

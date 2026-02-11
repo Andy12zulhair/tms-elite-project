@@ -1,0 +1,8 @@
+
+{
+  "name": "TMS Elite Admin - Logistics Management",
+  "description": "A comprehensive Transport Management System (TMS) dashboard for fleet tracking, order management, driver assignments, and financial reporting.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

@@ -1,0 +1,6 @@
+- [ ] Update import from "@google/genai" to "@google/generative-ai"
+- [ ] Change GoogleGenAI to GoogleGenerativeAI
+- [ ] Update initialization to new GoogleGenerativeAI(process.env.API_KEY)
+- [ ] Change model from 'gemini-3-flash-preview' to 'gemini-1.5-flash'
+- [ ] Update generateContent call to use correct API structure
+- [ ] Update response handling to result.response.text()

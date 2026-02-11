@@ -1,0 +1,10 @@
+[
+  "id",
+  "tracking_id",
+  "vehicle_id",
+  "driver_id",
+  "origin",
+  "destination",
+  "status",
+  "created_at"
+]

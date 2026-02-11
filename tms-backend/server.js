@@ -2,30 +2,107 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 
+const { Client, LocalAuth } = require('whatsapp-web.js');
+const qrcode = require('qrcode');
+
 const app = express();
-const port = 5000; // Server akan jalan di port 5000
+const port = 5000;
 
 // Agar website React boleh ambil data
 app.use(cors());
 app.use(express.json());
 
-// Konfigurasi Database (Sesuaikan password jika beda)
+// Konfigurasi Database
 const pool = new Pool({
   user: 'postgres',
   host: 'localhost',
   database: 'tms_db',
-  password: 'admin123', // Password yang tadi kita buat
+  password: 'admin123',
   port: 5432,
 });
 
-// === API ENDPOINTS (Pintu Masuk Data) ===
+// === WHATSAPP CONFIGURATION ===
+const client = new Client({
+  authStrategy: new LocalAuth(),
+  puppeteer: {
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  }
+});
 
-// 0. Test Route (Cek apakah server jalan)
+let qrCodeData = null;
+let isClientReady = false;
+
+client.on('qr', (qr) => {
+  console.log('QR RECEIVED', qr);
+  // Generate QR as Data URL
+  qrcode.toDataURL(qr, (err, url) => {
+    if (err) {
+      console.error('Error generating QR', err);
+      return;
+    }
+    qrCodeData = url;
+  });
+});
+
+client.on('ready', () => {
+  console.log('WhatsApp Client is ready!');
+  isClientReady = true;
+  qrCodeData = null; // Clear QR after connected
+});
+
+client.on('authenticated', () => {
+  console.log('WhatsApp Authenticated');
+});
+
+client.on('auth_failure', msg => {
+  console.error('AUTHENTICATION FAILURE', msg);
+});
+
+client.initialize();
+
+// === WA ENDPOINTS ===
+
+// Get QR Code
+app.get('/api/whatsapp/qr', (req, res) => {
+  if (isClientReady) {
+    res.json({ status: 'connected', qr: null });
+  } else if (qrCodeData) {
+    res.json({ status: 'scanning', qr: qrCodeData });
+  } else {
+    res.json({ status: 'loading', qr: null });
+  }
+});
+
+// Send Message Function
+const sendWhatsAppMessage = async (number, message) => {
+  if (!isClientReady) return false;
+
+  // Format number: remove 0 or +62, add 62, append @c.us
+  let formattedNumber = number.replace(/\D/g, '');
+  if (formattedNumber.startsWith('0')) {
+    formattedNumber = '62' + formattedNumber.slice(1);
+  } else if (!formattedNumber.startsWith('62')) {
+    formattedNumber = '62' + formattedNumber; // Default to ID
+  }
+  formattedNumber += '@c.us';
+
+  try {
+    await client.sendMessage(formattedNumber, message);
+    console.log(`Message sent to ${number}`);
+    return true;
+  } catch (err) {
+    console.error(`Failed to send message to ${number}`, err);
+    return false;
+  }
+};
+
+// === API ENDPOINTS ===
+
 app.get('/', (req, res) => {
   res.send('Backend TMS is running! 🚀');
 });
 
-// 1. Ambil Statistik Dashboard (Untuk Kotak-kotak Angka)
+// 1. Ambil Statistik Dashboard
 app.get('/api/dashboard', async (req, res) => {
   try {
     const activeShipments = await pool.query("SELECT COUNT(*) FROM shipments WHERE status = 'active'");
@@ -45,7 +122,7 @@ app.get('/api/dashboard', async (req, res) => {
   }
 });
 
-// 1.5 Ambil Data Grafik Performance (Running 7 Hari Terakhir)
+// 1.5 Ambil Data Grafik Performance
 app.get('/api/dashboard/performance', async (req, res) => {
   try {
     const query = `
@@ -65,7 +142,7 @@ app.get('/api/dashboard/performance', async (req, res) => {
   }
 });
 
-// 2. Ambil Lokasi Kendaraan (Untuk Peta)
+// 2. Ambil Lokasi Kendaraan
 app.get('/api/vehicles', async (req, res) => {
   try {
     const query = `
@@ -152,14 +229,21 @@ app.post('/api/shipments', async (req, res) => {
       "INSERT INTO shipments (item_detail, origin, destination, status, customer_name, description) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
       [item_detail, origin, destination, status, customer_name, description]
     );
+
+    // Notify if status isn't Pending (rare case, but possible)
+    if (status !== 'Pending') {
+      // Dummy number for demo. In real app, we'd have a 'customer_phone' column
+      const dummyPhone = 'sender_or_admin_number_here';
+      const msg = `TMS Update: New shipment created for ${customer_name}. Status: ${status}.\nItem: ${item_detail}\nRoute: ${origin} -> ${destination}`;
+      // await sendWhatsAppMessage(dummyPhone, msg);
+    }
+
     res.json(newShipment.rows[0]);
   } catch (err) {
     console.error(err.message);
     res.status(500).send("Server Error: Gagal menambah shipment");
   }
 });
-
-// === DRIVER ENDPOINTS ===
 
 // 10. Ambil Semua Driver
 app.get('/api/drivers', async (req, res) => {
@@ -245,20 +329,16 @@ app.delete('/api/finance/:id', async (req, res) => {
 app.post('/api/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-
-    // Cari user berdasarkan username
     const user = await pool.query("SELECT * FROM users WHERE username = $1", [username]);
 
     if (user.rows.length === 0) {
       return res.status(401).json({ message: "Invalid Credentials" });
     }
 
-    // Cek password (Biasa) - Production harus pakai bcrypt!
     if (password !== user.rows[0].password) {
       return res.status(401).json({ message: "Invalid Credentials" });
     }
 
-    // Login Sukses
     res.json({
       message: "Login Successful",
       user: {
@@ -281,8 +361,6 @@ app.put('/api/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { name, email, password } = req.body;
-
-    // Build dynamic query
     let query = "UPDATE users SET name = $1, email = $2";
     let values = [name, email];
     let counter = 3;
@@ -310,10 +388,28 @@ app.put('/api/shipments/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
+
+    // Get shipment info first for notifiction
+    const shipmentInfo = await pool.query("SELECT * FROM shipments WHERE id = $1", [id]);
+    const customer = shipmentInfo.rows[0].customer_name;
+    const item = shipmentInfo.rows[0].item_detail;
+
     const updateShipment = await pool.query(
       "UPDATE shipments SET status = $1 WHERE id = $2 RETURNING *",
       [status, id]
     );
+
+    // Kirim Notifikasi WA jika status berubah
+    if (isClientReady) {
+      // NOTE: In production, use customer's real phone number from DB.
+      // Here we send to a default admin/test number or simulate log
+      const message = `Halo ${customer}, status paket anda '${item}' telah berubah menjadi: *${status}*. Terima kasih telah menggunakan TMS Elite.`;
+
+      // GANTI NOMOR INI DENGAN NOMOR WA ANDA UNTUK TESTING (Format: 628xxx)
+      // Contoh: sendWhatsAppMessage('628123456789', message);
+      console.log(`[WA SIMULATION] Sending to ${customer}: ${message}`);
+    }
+
     res.json(updateShipment.rows[0]);
   } catch (err) {
     console.error(err.message);

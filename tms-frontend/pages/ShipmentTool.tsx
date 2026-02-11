@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Package, MapPin, ArrowRight, Clock, User, Filter, Download, Plus, Trash2, X } from 'lucide-react';
 import { ShipmentStatus } from '../types';
 
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
 const ShipmentTool: React.FC = () => {
   const [shipments, setShipments] = useState([]);
   const [filter, setFilter] = useState('All');
@@ -14,6 +17,35 @@ const ShipmentTool: React.FC = () => {
     status: 'Pending',
     customer_name: ''
   });
+
+  // Export PDF
+  const exportPDF = () => {
+    const doc = new jsPDF();
+    doc.text("Shipment Report", 14, 10);
+
+    const tableColumn = ["ID", "Item", "Status", "Origin", "Destination", "Customer"];
+    const tableRows: any[] = [];
+
+    shipments.forEach((shipment: any) => {
+      const shipmentData = [
+        shipment.id,
+        shipment.item_detail,
+        shipment.status,
+        shipment.origin,
+        shipment.destination,
+        shipment.customer_name,
+      ];
+      tableRows.push(shipmentData);
+    });
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 20,
+    });
+
+    doc.save("shipments_report.pdf");
+  };
 
   // Fetch Shipments
   const fetchShipments = () => {
@@ -92,6 +124,13 @@ const ShipmentTool: React.FC = () => {
           <p className="text-slate-500">Track shipment progress and manage new orders</p>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={exportPDF}
+            className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-4 py-2 rounded-lg flex items-center gap-2 font-medium transition-colors"
+          >
+            <Download size={20} />
+            Export PDF
+          </button>
           <button
             onClick={() => setIsModalOpen(true)}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium transition-colors"

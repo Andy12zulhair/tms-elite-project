@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Wallet, DollarSign, FileText, TrendingUp, PieChart as PieChartIcon, Plus, Trash2, X } from 'lucide-react';
-import {
-  ResponsiveContainer, Tooltip, Cell, PieChart, Pie
-} from 'recharts';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { Wallet, DollarSign, FileText, TrendingUp, PieChart as PieChartIcon, Plus, Trash2, X, Download } from 'lucide-react';
+import { ResponsiveContainer, Tooltip, Cell, PieChart, Pie } from 'recharts';
 
 const FinanceTool: React.FC = () => {
   const [transactions, setTransactions] = useState([]);
@@ -14,6 +14,35 @@ const FinanceTool: React.FC = () => {
     category: 'Fuel',
     status: 'Paid'
   });
+
+  // Export PDF
+  const exportPDF = () => {
+    const doc = new jsPDF();
+    doc.text("Finance Report", 14, 10);
+
+    const tableColumn = ["Date", "Description", "Type", "Category", "Amount", "Status"];
+    const tableRows: any[] = [];
+
+    transactions.forEach((t: any) => {
+      const transactionData = [
+        new Date(t.date).toLocaleDateString(),
+        t.description,
+        t.type,
+        t.category,
+        `Rp ${Number(t.amount).toLocaleString('id-ID')}`,
+        t.status,
+      ];
+      tableRows.push(transactionData);
+    });
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 20,
+    });
+
+    doc.save("finance_report.pdf");
+  };
 
   const fetchTransactions = () => {
     fetch('http://localhost:5000/api/finance')
@@ -89,13 +118,22 @@ const FinanceTool: React.FC = () => {
           <h2 className="text-2xl font-bold text-slate-800">Finance & Invoicing</h2>
           <p className="text-slate-500">Track operational costs and manage client billing</p>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium transition-colors"
-        >
-          <Plus size={20} />
-          Add Transaction
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={exportPDF}
+            className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-4 py-2 rounded-lg flex items-center gap-2 font-medium transition-colors"
+          >
+            <Download size={20} />
+            Export PDF
+          </button>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium transition-colors"
+          >
+            <Plus size={20} />
+            Add Transaction
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -1,203 +1,229 @@
 import React, { useState, useEffect } from 'react';
-import { User, Lock, Mail, Save, CheckCircle, Shield } from 'lucide-react';
+import { User, Lock, Mail, Save, Smartphone, QrCode, Wifi } from 'lucide-react';
 
-const SettingsPage = () => {
-    const [user, setUser] = useState<any>(null);
-    const [formData, setFormData] = useState({
+const SettingsPage: React.FC = () => {
+    const [profile, setProfile] = useState({
+        id: 0,
         name: '',
         email: '',
+        username: ''
+    });
+
+    const [passwordData, setPasswordData] = useState({
         currentPassword: '',
         newPassword: '',
         confirmPassword: ''
     });
-    const [loading, setLoading] = useState(false);
-    const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
+    const [message, setMessage] = useState({ text: '', type: '' });
+    const [waStatus, setWaStatus] = useState('loading');
+    const [waQr, setWaQr] = useState<string | null>(null);
 
     useEffect(() => {
-        const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-            const parsedUser = JSON.parse(storedUser);
-            setUser(parsedUser);
-            setFormData(prev => ({ ...prev, name: parsedUser.name || '', email: parsedUser.email || '' }));
+        // Load user data from localStorage
+        const savedUser = JSON.parse(localStorage.getItem('user') || '{}');
+        if (savedUser && savedUser.id) {
+            setProfile(savedUser);
         }
     }, []);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
+    useEffect(() => {
+        const interval = setInterval(() => {
+            fetch('http://localhost:5000/api/whatsapp/qr')
+                .then(res => res.json())
+                .then(data => {
+                    setWaStatus(data.status);
+                    setWaQr(data.qr);
+                })
+                .catch(err => console.error(err));
+        }, 3000);
+
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setProfile({ ...profile, [e.target.name]: e.target.value });
+    };
+
+    const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setPasswordData({ ...passwordData, [e.target.name]: e.target.value });
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
-        setMessage(null);
-
-        // Basic validation
-        if (formData.newPassword && formData.newPassword !== formData.confirmPassword) {
-            setMessage({ type: 'error', text: 'New passwords do not match' });
-            setLoading(false);
+        if (passwordData.newPassword && passwordData.newPassword !== passwordData.confirmPassword) {
+            setMessage({ text: "New passwords do not match!", type: "error" });
             return;
         }
 
         try {
-            if (!user?.id) throw new Error("User ID not found");
-
             const body: any = {
-                name: formData.name,
-                email: formData.email
+                name: profile.name,
+                email: profile.email
             };
 
-            if (formData.newPassword) {
-                body.password = formData.newPassword;
+            if (passwordData.newPassword) {
+                body.password = passwordData.newPassword;
             }
 
-            const response = await fetch(`http://localhost:5000/api/users/${user.id}`, {
+            const response = await fetch(`http://localhost:5000/api/users/${profile.id}`, {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });
 
-            if (!response.ok) throw new Error("Failed to update profile");
-
-            const updatedUser = await response.json();
-
-            // Update local storage
-            const newUser = { ...user, ...updatedUser };
-            localStorage.setItem('user', JSON.stringify(newUser));
-            setUser(newUser);
-
-            // Reset sensitive fields
-            setFormData(prev => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
-            setMessage({ type: 'success', text: 'Profile updated successfully!' });
-
+            if (response.ok) {
+                const updatedUser = await response.json();
+                localStorage.setItem('user', JSON.stringify(updatedUser)); // Update local storage
+                setMessage({ text: "Profile updated successfully!", type: "success" });
+                setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+            } else {
+                setMessage({ text: "Failed to update profile", type: "error" });
+            }
         } catch (error) {
-            setMessage({ type: 'error', text: 'Failed to update profile. Please try again.' });
-        } finally {
-            setLoading(false);
+            console.error(error);
+            setMessage({ text: "An error occurred", type: "error" });
         }
     };
 
     return (
-        <div className="space-y-6 max-w-4xl mx-auto pb-10">
-            <div className="flex flex-col gap-2">
-                <h2 className="text-3xl font-bold text-slate-800 tracking-tight">Account Settings</h2>
-                <p className="text-slate-500">Manage your profile information and security settings.</p>
+        <div className="max-w-4xl mx-auto space-y-6">
+            <div className="mb-6">
+                <h2 className="text-2xl font-bold text-slate-800">Settings</h2>
+                <p className="text-slate-500">Manage your account profile, security, and integration</p>
             </div>
 
-            <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-                <div className="p-6 border-b border-slate-50 bg-slate-50/50 flex items-center gap-4">
-                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-blue-200">
-                        {user?.username?.substring(0, 2).toUpperCase() || 'AD'}
-                    </div>
-                    <div>
-                        <h3 className="text-xl font-bold text-slate-800">{user?.name || 'Admin User'}</h3>
-                        <p className="text-slate-500 text-sm flex items-center gap-1.5">
-                            <Shield size={14} className="text-blue-500" />
-                            {user?.role || 'Administrator'}
-                        </p>
-                    </div>
+            {message.text && (
+                <div className={`p-4 rounded-xl mb-6 ${message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {message.text}
                 </div>
+            )}
 
-                <form onSubmit={handleSubmit} className="p-8 space-y-8">
-                    {message && (
-                        <div className={`p-4 rounded-xl flex items-center gap-3 ${message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
-                            }`}>
-                            {message.type === 'success' ? <CheckCircle size={20} /> : <div className="w-2 h-2 rounded-full bg-red-500" />}
-                            {message.text}
-                        </div>
-                    )}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-5">
-                            <h4 className="font-semibold text-slate-900 border-b border-slate-100 pb-2 mb-4 flex items-center gap-2">
-                                <User size={18} className="text-slate-400" />
-                                Personal Information
-                            </h4>
-
+                {/* PROFILE & SECURITY */}
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h3 className="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2">
+                            <User size={20} className="text-blue-600" />
+                            Profile Information
+                        </h3>
+                        <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1.5">Full Name</label>
-                                <div className="relative">
-                                    <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                    <input
-                                        type="text"
-                                        name="name"
-                                        value={formData.name}
-                                        onChange={handleChange}
-                                        className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800"
-                                        placeholder="Enter your name"
-                                    />
-                                </div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
+                                <input
+                                    type="text"
+                                    name="name"
+                                    value={profile.name}
+                                    onChange={handleProfileChange}
+                                    className="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
                             </div>
-
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1.5">Email Address</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
                                 <div className="relative">
-                                    <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <Mail size={18} className="absolute left-3 top-3 text-slate-400" />
                                     <input
                                         type="email"
                                         name="email"
-                                        value={formData.email}
-                                        onChange={handleChange}
-                                        className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800"
-                                        placeholder="name@company.com"
+                                        value={profile.email}
+                                        onChange={handleProfileChange}
+                                        className="w-full border border-slate-300 rounded-lg pl-10 p-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     />
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <div className="space-y-5">
-                            <h4 className="font-semibold text-slate-900 border-b border-slate-100 pb-2 mb-4 flex items-center gap-2">
-                                <Lock size={18} className="text-slate-400" />
-                                Security (Optional)
-                            </h4>
-
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h3 className="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2">
+                            <Lock size={20} className="text-blue-600" />
+                            Security
+                        </h3>
+                        <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1.5">New Password</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">New Password</label>
                                 <input
                                     type="password"
                                     name="newPassword"
-                                    value={formData.newPassword}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800"
+                                    value={passwordData.newPassword}
+                                    onChange={handlePasswordChange}
+                                    className="w-full border border-slate-300 rounded-lg p-2.5"
                                     placeholder="Leave blank to keep current"
                                 />
                             </div>
-
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1.5">Confirm New Password</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Confirm New Password</label>
                                 <input
                                     type="password"
                                     name="confirmPassword"
-                                    value={formData.confirmPassword}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800"
-                                    placeholder="Confirm new password"
+                                    value={passwordData.confirmPassword}
+                                    onChange={handlePasswordChange}
+                                    className="w-full border border-slate-300 rounded-lg p-2.5"
                                 />
                             </div>
                         </div>
                     </div>
 
-                    <div className="pt-6 border-t border-slate-50 flex justify-end">
+                    <div className="flex justify-end">
                         <button
                             type="submit"
-                            disabled={loading}
-                            className={`flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all shadow-lg shadow-blue-600/20 ${loading ? 'opacity-70 cursor-not-allowed' : 'hover:-translate-y-0.5'}`}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-medium shadow-lg shadow-blue-900/20 flex items-center gap-2 transition-transform active:scale-95"
                         >
-                            {loading ? (
-                                <>
-                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    Saving...
-                                </>
-                            ) : (
-                                <>
-                                    <Save size={18} />
-                                    Save Changes
-                                </>
-                            )}
+                            <Save size={18} />
+                            Save Changes
                         </button>
                     </div>
                 </form>
+
+                {/* WHATSAPP INTEGRATION */}
+                <div className="space-y-6">
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-full flex flex-col">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
+                                <Smartphone size={20} className="text-green-600" />
+                                WhatsApp Gateway
+                            </h3>
+                            <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${waStatus === 'connected' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                {waStatus}
+                            </div>
+                        </div>
+
+                        <div className="flex-1 flex flex-col items-center justify-center p-6 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                            {waStatus === 'connected' ? (
+                                <div className="text-center space-y-4">
+                                    <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
+                                        <Wifi size={40} />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-slate-800">Connected</h4>
+                                        <p className="text-sm text-slate-500">WhatsApp is ready to send notifications.</p>
+                                    </div>
+                                </div>
+                            ) : waQr ? (
+                                <div className="text-center space-y-4">
+                                    <div className="p-4 bg-white rounded-xl shadow-sm inline-block">
+                                        <img src={waQr} alt="WhatsApp QR Code" className="w-48 h-48" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-slate-800">Scan QR Code</h4>
+                                        <p className="text-sm text-slate-500">Open WhatsApp on your phone &rarr; Linked Devices &rarr; Link a Device</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-center text-slate-400">
+                                    <QrCode size={48} className="mx-auto mb-2 opacity-50" />
+                                    <p>Loading WhatsApp Client...</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="mt-6 text-xs text-slate-400 text-center">
+                            *Notifikasi otomatis akan dikirim ke customer saat status pengiriman berubah.
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     );

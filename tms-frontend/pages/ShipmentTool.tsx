@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../src/config';
 import { Package, MapPin, ArrowRight, Clock, User, Filter, Download, Plus, Trash2, X } from 'lucide-react';
 import { ShipmentStatus } from '../types';
 
@@ -49,7 +50,7 @@ const ShipmentTool: React.FC = () => {
 
   // Fetch Shipments
   const fetchShipments = () => {
-    fetch('http://localhost:5000/api/shipments')
+    fetch(`${API_URL}/api/shipments`)
       .then(res => res.json())
       .then(data => setShipments(data))
       .catch(err => console.error("Error:", err));
@@ -66,7 +67,7 @@ const ShipmentTool: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:5000/api/shipments', {
+      const response = await fetch(`${API_URL}/api/shipments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -94,7 +95,7 @@ const ShipmentTool: React.FC = () => {
   const handleDelete = async (id: number) => {
     if (!window.confirm("Delete this shipment?")) return;
     try {
-      await fetch(`http://localhost:5000/api/shipments/${id}`, { method: 'DELETE' });
+      await fetch(`${API_URL}/api/shipments/${id}`, { method: 'DELETE' });
       fetchShipments();
     } catch (err) {
       console.error(err);

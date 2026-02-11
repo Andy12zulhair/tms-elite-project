@@ -98,9 +98,7 @@ const sendWhatsAppMessage = async (number, message) => {
 
 // === API ENDPOINTS ===
 
-app.get('/', (req, res) => {
-  res.send('Backend TMS is running! 🚀');
-});
+
 
 // 1. Ambil Statistik Dashboard
 app.get('/api/dashboard', async (req, res) => {
@@ -427,6 +425,16 @@ app.delete('/api/shipments/:id', async (req, res) => {
     console.error(err.message);
     res.status(500).send("Server Error");
   }
+});
+
+// Serve static files from the React app
+const path = require('path');
+app.use(express.static(path.join(__dirname, '../tms-frontend/dist')));
+
+// The "catchall" handler: for any request that doesn't
+// match one above, send back React's index.html file.
+app.get(/.*/, (req, res) => {
+  res.sendFile(path.join(__dirname, '../tms-frontend/dist/index.html'));
 });
 
 app.listen(port, () => {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../src/config';
 import { Users, Star, Phone, MessageSquare, Award, Clock, Plus, Trash2, X } from 'lucide-react';
 import { DriverStatus } from '../types';
 
@@ -13,7 +14,7 @@ const DriverTool: React.FC = () => {
   });
 
   const fetchDrivers = () => {
-    fetch('http://localhost:5000/api/drivers')
+    fetch(`${API_URL}/api/drivers`)
       .then(res => res.json())
       .then(data => setDrivers(data))
       .catch(err => console.error("Error:", err));
@@ -30,7 +31,7 @@ const DriverTool: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:5000/api/drivers', {
+      const response = await fetch(`${API_URL}/api/drivers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -51,7 +52,7 @@ const DriverTool: React.FC = () => {
   const handleDelete = async (id: number) => {
     if (!window.confirm("Delete this driver?")) return;
     try {
-      await fetch(`http://localhost:5000/api/drivers/${id}`, { method: 'DELETE' });
+      await fetch(`${API_URL}/api/drivers/${id}`, { method: 'DELETE' });
       fetchDrivers();
     } catch (err) {
       console.error(err);

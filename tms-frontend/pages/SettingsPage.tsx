@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../src/config';
 import { User, Lock, Mail, Save, Smartphone, QrCode, Wifi } from 'lucide-react';
 
 const SettingsPage: React.FC = () => {
@@ -29,7 +30,7 @@ const SettingsPage: React.FC = () => {
 
     useEffect(() => {
         const interval = setInterval(() => {
-            fetch('http://localhost:5000/api/whatsapp/qr')
+            fetch(`${API_URL}/api/whatsapp/qr`)
                 .then(res => res.json())
                 .then(data => {
                     setWaStatus(data.status);
@@ -66,7 +67,7 @@ const SettingsPage: React.FC = () => {
                 body.password = passwordData.newPassword;
             }
 
-            const response = await fetch(`http://localhost:5000/api/users/${profile.id}`, {
+            const response = await fetch(`${API_URL}/api/users/${profile.id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)

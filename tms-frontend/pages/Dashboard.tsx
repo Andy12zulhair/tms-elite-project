@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../src/config';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area
 } from 'recharts';
@@ -64,7 +65,7 @@ function Dashboard() {
     async function fetchStats() {
       try {
 
-        const response = await fetch('http://localhost:5000/api/dashboard');
+        const response = await fetch(`${API_URL}/api/dashboard`);
         if (!response.ok) throw new Error("Backend offline");
         const data = await response.json();
         setStats(data);
@@ -80,7 +81,7 @@ function Dashboard() {
 
     async function fetchVehicles() {
       try {
-        const response = await fetch('http://localhost:5000/api/vehicles');
+        const response = await fetch(`${API_URL}/api/vehicles`);
         if (!response.ok) throw new Error("Backend offline");
         const data = await response.json();
         setVehicles(data);
@@ -119,7 +120,7 @@ function Dashboard() {
   useEffect(() => {
     async function fetchPerformance() {
       try {
-        const response = await fetch('http://localhost:5000/api/dashboard/performance');
+        const response = await fetch(`${API_URL}/api/dashboard/performance`);
         const data = await response.json();
         // Fallback if data is empty (prevents empty chart)
         if (data.length > 0) {

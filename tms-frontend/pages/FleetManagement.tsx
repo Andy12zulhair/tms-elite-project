@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../src/config';
 import { Truck, Plus, Search, Filter, Edit, Trash2, X } from 'lucide-react';
 
 const FleetManagement = () => {
@@ -17,7 +18,7 @@ const FleetManagement = () => {
 
   // Ambil data kendaraan dari Backend
   const fetchVehicles = () => {
-    fetch('http://localhost:5000/api/vehicles')
+    fetch(`${API_URL}/api/vehicles`)
       .then(res => res.json())
       .then(data => setVehicles(data))
       .catch(err => console.error("Error:", err));
@@ -50,7 +51,7 @@ const FleetManagement = () => {
     if (!window.confirm("Are you sure you want to delete this vehicle?")) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/vehicles/${id}`, {
+      const response = await fetch(`${API_URL}/api/vehicles/${id}`, {
         method: 'DELETE',
       });
       if (response.ok) {
@@ -69,8 +70,8 @@ const FleetManagement = () => {
 
     // Tentukan URL & Method berdasarkan mode (Edit vs Add)
     const url = editingId
-      ? `http://localhost:5000/api/vehicles/${editingId}`
-      : 'http://localhost:5000/api/vehicles';
+      ? `${API_URL}/api/vehicles/${editingId}`
+      : `${API_URL}/api/vehicles`;
 
     const method = editingId ? 'PUT' : 'POST';
 
@@ -144,8 +145,8 @@ const FleetManagement = () => {
                   <td className="p-4 text-slate-600">{v.capacity_kg} kg</td>
                   <td className="p-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${v.status === 'available' ? 'bg-green-100 text-green-700' :
-                        v.status === 'maintenance' ? 'bg-red-100 text-red-700' :
-                          'bg-blue-100 text-blue-700'
+                      v.status === 'maintenance' ? 'bg-red-100 text-red-700' :
+                        'bg-blue-100 text-blue-700'
                       }`}>
                       {v.status}
                     </span>

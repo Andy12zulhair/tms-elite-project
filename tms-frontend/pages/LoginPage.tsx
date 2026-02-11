@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_URL } from '../src/config';
 import { Truck, Lock, User, ArrowRight, CheckCircle } from 'lucide-react';
 
 interface LoginPageProps {
@@ -17,7 +18,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         setError('');
 
         try {
-            const response = await fetch('http://localhost:5000/api/login', {
+            const response = await fetch(`${API_URL}/api/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../src/config';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Wallet, DollarSign, FileText, TrendingUp, PieChart as PieChartIcon, Plus, Trash2, X, Download } from 'lucide-react';
@@ -45,7 +46,7 @@ const FinanceTool: React.FC = () => {
   };
 
   const fetchTransactions = () => {
-    fetch('http://localhost:5000/api/finance')
+    fetch(`${API_URL}/api/finance`)
       .then(res => res.json())
       .then(data => setTransactions(data))
       .catch(err => console.error("Error:", err));
@@ -83,7 +84,7 @@ const FinanceTool: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:5000/api/finance', {
+      const response = await fetch(`${API_URL}/api/finance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -104,7 +105,7 @@ const FinanceTool: React.FC = () => {
   const handleDelete = async (id: number) => {
     if (!window.confirm("Delete this transaction?")) return;
     try {
-      await fetch(`http://localhost:5000/api/finance/${id}`, { method: 'DELETE' });
+      await fetch(`${API_URL}/api/finance/${id}`, { method: 'DELETE' });
       fetchTransactions();
     } catch (err) {
       console.error(err);

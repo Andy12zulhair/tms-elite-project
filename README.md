@@ -66,6 +66,29 @@ A comprehensive, full-stack Transport Management System built with React, Node.j
     npm run dev
     ```
     The application will be available at `http://localhost:5173`.
+    *(Note: For production/demo, the backend is configured to serve the frontend statically at port 5000)*
+
+## Optimized Deployment (Ngrok Demo)
+
+To run the application publicly with a single tunnel:
+
+1.  **Build Frontend**:
+    ```bash
+    cd tms-frontend
+    npm run build
+    ```
+
+2.  **Start Backend**:
+    ```bash
+    cd tms-backend
+    node server.js
+    ```
+
+3.  **Start Ngrok**:
+    ```bash
+    ngrok start backend --config=ngrok.yml
+    ```
+    Access the full application via the **Backend URL** provided by Ngrok.
 
 4.  **Login**:
     - Username: `admin`

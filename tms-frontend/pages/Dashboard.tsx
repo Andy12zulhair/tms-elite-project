@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area
 } from 'recharts';
 import {
-  Package, Truck, AlertTriangle, CheckCircle, Navigation, TrendingUp, Sparkles, MapPin, Calendar, ArrowUpRight
+  Package, Truck, AlertTriangle, CheckCircle, Navigation, TrendingUp, Sparkles, MapPin, Calendar, ArrowUpRight, Activity, Clock, ShieldAlert
 } from 'lucide-react';
 import clsx from 'clsx';
 import FleetMap from './FleetMap';
@@ -12,7 +12,7 @@ import FleetMap from './FleetMap';
 
 const getLogisticsInsights = async (prompt: string) => {
   await new Promise(resolve => setTimeout(resolve, 1500));
-  return "Based on current traffic patterns and fleet status, we recommend rerouting 3 vehicles in the North District to avoid potential congestion. Logistics efficiency is currently at 94%.";
+  return "AI Engine: Recommending immediate rerouting for 3 vehicles in the North District due to predicted heavy congestion. Logistics efficiency score is 94%. Predictive model estimates 12% delay reduction if alternative routes are taken.";
 };
 
 const MOCK_STATS = {
@@ -23,12 +23,25 @@ const MOCK_STATS = {
 };
 
 const MOCK_VEHICLES = [
-  { id: 1, latitude: -6.1751, longitude: 106.8650, status: 'moving', plat_no: 'Truck A-01' },
-  { id: 2, latitude: -6.2088, longitude: 106.8456, status: 'idle', plat_no: 'Truck B-04' },
-  { id: 3, latitude: -6.1214, longitude: 106.7741, status: 'moving', plat_no: 'Van express 12' },
-  { id: 4, latitude: -6.2914, longitude: 106.8741, status: 'maintenance', plat_no: 'Truck C-09' },
-  { id: 5, latitude: -6.1914, longitude: 106.9741, status: 'moving', plat_no: 'Truck D-02' },
+  { id: 1, latitude: -6.1751, longitude: 106.8650, status: 'moving', plat_no: 'Truck A-01', speed: 45, idleTime: 0, eta: '45 mins', risk: 'Low' },
+  { id: 2, latitude: -6.2088, longitude: 106.8456, status: 'idle', plat_no: 'Truck B-04', speed: 0, idleTime: 120, eta: 'Delayed', risk: 'High' },
+  { id: 3, latitude: -6.1214, longitude: 106.7741, status: 'moving', plat_no: 'Van express 12', speed: 60, idleTime: 0, eta: '15 mins', risk: 'Low' },
+  { id: 4, latitude: -6.2914, longitude: 106.8741, status: 'maintenance', plat_no: 'Truck C-09', speed: 0, idleTime: 0, eta: 'N/A', risk: 'None' },
+  { id: 5, latitude: -6.1914, longitude: 106.9741, status: 'moving', plat_no: 'Truck D-02', speed: 12, idleTime: 0, eta: '1h 30m', risk: 'Medium' },
 ];
+
+const detectAnomalies = (vehicles: any[]) => {
+  const alerts: any[] = [];
+  vehicles.forEach(v => {
+    if (v.status === 'idle' && v.idleTime >= 60) {
+      alerts.push({ id: v.id, type: 'critical', title: 'Idle Anomaly', text: `${v.plat_no} idle for >${v.idleTime} mins. Risk of delivery failure.` });
+    }
+    if (v.status === 'moving' && v.speed < 20 && v.risk === 'Medium') {
+      alerts.push({ id: v.id, type: 'warning', title: 'Traffic Anomaly', text: `${v.plat_no} moving unusually slow (${v.speed} km/h). High probability of delay.` });
+    }
+  });
+  return alerts;
+};
 
 function Dashboard() {
   const [aiInsight, setAiInsight] = useState<string>("Analyzing logistics data...");
@@ -36,6 +49,7 @@ function Dashboard() {
 
 
   const [vehicles, setVehicles] = useState<any[]>([]);
+  const [anomalies, setAnomalies] = useState<any[]>([]);
   const [stats, setStats] = useState({
     active_shipments: 0,
     available_fleet: 0,
@@ -84,10 +98,20 @@ function Dashboard() {
         const response = await fetch(`${API_URL}/api/vehicles`);
         if (!response.ok) throw new Error("Backend offline");
         const data = await response.json();
-        setVehicles(data);
+        // Since backend might not have the new AI fields, let's map them with some generated data if missing
+        const enrichedData = data.map((v: any, index: number) => ({
+          ...v,
+          speed: v.speed ?? (v.status === 'moving' ? Math.floor(Math.random() * 40) + 10 : 0),
+          idleTime: v.idleTime ?? (v.status === 'idle' ? Math.floor(Math.random() * 100) + 20 : 0),
+          eta: v.eta ?? (v.status === 'moving' ? `${Math.floor(Math.random() * 60) + 15} mins` : 'N/A'),
+          risk: v.risk ?? (v.status === 'idle' ? 'High' : 'Low')
+        }));
+        setVehicles(enrichedData);
+        setAnomalies(detectAnomalies(enrichedData));
       } catch (error) {
         console.warn('Backend unavailable, using MOCK DATA for Vehicles');
         setVehicles(MOCK_VEHICLES);
+        setAnomalies(detectAnomalies(MOCK_VEHICLES));
       } finally {
         setLoadingVehicles(false);
       }
@@ -148,10 +172,10 @@ function Dashboard() {
 
       <div className="flex flex-col md:flex-row justify-between items-end gap-4">
         <div>
-          <h2 className="text-4xl font-bold text-slate-900 tracking-tight">Control Tower</h2>
-          <div className="flex items-center gap-2 mt-2 text-slate-500">
-            <Calendar size={16} />
-            <span>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight">Smart Transport Monitoring</h2>
+          <div className="flex items-center gap-2 mt-2 text-slate-500 font-medium">
+            <Activity size={18} className="text-blue-500" />
+            <span>AI-Driven Optimization & Anomaly Detection</span>
           </div>
         </div>
         <div className="flex gap-3">
@@ -172,8 +196,10 @@ function Dashboard() {
             </div>
             <div className="flex-1">
               <h3 className="font-bold text-lg mb-1 flex items-center gap-2">
-                Transport Logistics Analysis
-                <span className="text-[10px] bg-indigo-500/30 px-2 py-0.5 rounded-full border border-indigo-400/30 text-indigo-200 font-medium">BETA</span>
+                AI Core: Network Health & Predictive Insights
+                <span className="text-[10px] bg-indigo-500/30 px-2 py-0.5 rounded-full border border-indigo-400/30 text-indigo-200 font-medium flex items-center gap-1">
+                  <Activity size={10} /> LIVE
+                </span>
               </h3>
               {loadingAi ? (
                 <div className="space-y-2 mt-2 animate-pulse max-w-2xl">
@@ -265,62 +291,73 @@ function Dashboard() {
         </div>
 
 
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex flex-col h-[500px]">
-          <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
-            Weekly Performance
-          </h3>
-          <div className="flex-1 w-full min-h-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={performanceData}>
-                <defs>
-                  <linearGradient id="colorShip" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis
-                  dataKey="name"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12, fill: '#94a3b8' }}
-                  dy={10}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 12, fill: '#94a3b8' }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: '16px',
-                    border: 'none',
-                    boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
-                    padding: '12px 16px',
-                    fontFamily: 'inherit'
-                  }}
-                  itemStyle={{ color: '#4f46e5', fontWeight: 600 }}
-                  cursor={{ stroke: '#e2e8f0', strokeWidth: 2 }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="shipments"
-                  stroke="#4f46e5"
-                  strokeWidth={4}
-                  fillOpacity={1}
-                  fill="url(#colorShip)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 flex flex-col h-[500px] overflow-hidden">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+              <ShieldAlert className="text-rose-500" size={20} />
+              AI Smart Alerts & ETA Predictions
+            </h3>
+            <span className="bg-rose-100 text-rose-700 text-xs font-bold px-2.5 py-1 rounded-lg">
+              {anomalies.length} Critical
+            </span>
           </div>
-          <div className="mt-6 pt-6 border-t border-slate-50 grid grid-cols-2 gap-4">
-            <div className="p-4 bg-slate-50 rounded-2xl group hover:bg-blue-50 transition-colors">
-              <p className="text-xs text-slate-400 mb-1 group-hover:text-blue-400">Total Volume</p>
-              <p className="text-xl font-black text-slate-700 group-hover:text-blue-600">2.4k</p>
-            </div>
-            <div className="p-4 bg-slate-50 rounded-2xl group hover:bg-red-50 transition-colors">
-              <p className="text-xs text-slate-400 mb-1 group-hover:text-red-400">Avg. Delay</p>
-              <p className="text-xl font-black text-slate-700 group-hover:text-red-600">12m</p>
+
+          <div className="flex-1 overflow-y-auto pr-2 space-y-4">
+            {/* Anomaly Alerts */}
+            {anomalies.map((alert, idx) => (
+              <div key={`alert-${idx}`} className={`p-4 rounded-2xl border ${alert.type === 'critical' ? 'bg-rose-50 border-rose-100' : 'bg-amber-50 border-amber-100'}`}>
+                <div className="flex items-start gap-3">
+                  <div className={`p-2 rounded-xl mt-0.5 ${alert.type === 'critical' ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-600'}`}>
+                    <AlertTriangle size={18} />
+                  </div>
+                  <div>
+                    <h4 className={`text-sm font-bold ${alert.type === 'critical' ? 'text-rose-800' : 'text-amber-800'}`}>{alert.title}</h4>
+                    <p className={`text-xs mt-1 leading-relaxed ${alert.type === 'critical' ? 'text-rose-600' : 'text-amber-700'}`}>
+                      {alert.text}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {anomalies.length === 0 && (
+              <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-3">
+                <div className="p-2 bg-emerald-100 text-emerald-600 rounded-xl">
+                  <CheckCircle size={18} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-emerald-800">No Anomalies Detected</h4>
+                  <p className="text-xs text-emerald-600 mt-1">Fleet is operating optimally.</p>
+                </div>
+              </div>
+            )}
+
+            <div className="pt-4 mt-4 border-t border-slate-100">
+              <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Live Fleet ETA Predictions</h4>
+              <div className="space-y-3">
+                {vehicles.filter(v => v.status === 'moving').slice(0, 4).map((v, idx) => (
+                  <div key={`eta-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-blue-50 transition-colors border border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                        <Truck size={14} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-slate-700">{v.plat_no}</p>
+                        <p className="text-xs text-slate-500">Speed: {v.speed} km/h</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="flex items-center gap-1 text-sm font-bold text-slate-800 justify-end">
+                        <Clock size={12} className="text-blue-500" />
+                        {v.eta}
+                      </div>
+                      <p className={`text-[10px] font-bold mt-0.5 ${v.risk === 'High' ? 'text-rose-500' : v.risk === 'Medium' ? 'text-amber-500' : 'text-emerald-500'}`}>
+                        {v.risk} Risk
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>

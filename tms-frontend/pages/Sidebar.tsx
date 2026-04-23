@@ -33,8 +33,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, isOpen, onClose }) => {
               <Truck size={24} className="text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-wide">TMS Elite</h1>
-              <p className="text-[10px] text-slate-400 font-medium tracking-wider uppercase">Logistics Control</p>
+              <h1 className="text-lg font-bold tracking-wide leading-tight">Smart Transport</h1>
+              <p className="text-[9px] text-blue-400 font-bold tracking-wider uppercase">Monitoring & Optimization</p>
             </div>
           </div>
           {/* Close button for mobile */}
